@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export function App() {
@@ -23,59 +22,6 @@ export function App() {
 }
 
 function CurrencyInput({ initialValue = "", onChange }: { initialValue: string; onChange: (val: string) => void }) {
-  (String.prototype as any).splice = function (start: number, delCount: number, newSubStr = "") {
-    return this.slice(0, start) + newSubStr + this.slice(start + Math.abs(delCount));
-  };
-  (String.prototype as any).stripDollarSign = function () {
-    return this.replace("$", "");
-  };
-  (String.prototype as any).stripDecimalSign = function () {
-    return this.replace(/,|\./g, "");
-  };
-  (String.prototype as any).addDollarBack = function () {
-    if (this.indexOf("$") === -1) return "$" + this;
-    else return this;
-  };
-  (String.prototype as any).addSeparators = function () {
-    const decimals = this.slice(this.length - 2);
-    const nonDecimal = this.slice(0, this.length - 2).replace(/[.,$]/g, "");
-    let res = "";
-    let c = 0;
-    for (let i = nonDecimal.length - 1; i > -1; i--) {
-      const char = nonDecimal[i];
-      const addRightSeparator = c % 3 === 0 && c > 0;
-      c++;
-
-      // console.log({ char, addRightSeparator, decimals });
-
-      if (addRightSeparator) {
-        res = `${char}.${res}`;
-      } else {
-        res = `${char}${res}`;
-      }
-    }
-    // console.log("::nonDecimal", { nonDecimal, res });
-    return `$${res},${decimals}`;
-  };
-  (String.prototype as any).addDecimalBack = function () {
-    if (this.indexOf(",") === -1) return this.splice(this.length - 2, 0, ",");
-    else return this;
-  };
-  (String.prototype as any).pop = function () {
-    return this.slice(0, this.length - 1);
-  };
-  (String.prototype as any).padZeroes = function () {
-    let copy = this.slice();
-    while (copy.length < 3) {
-      copy = "0" + copy;
-    }
-    return copy;
-  };
-  (String.prototype as any).removeNonDigits = function () {
-    return this.replace(/\D/g, "");
-    // return this;
-  };
-
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -88,6 +34,22 @@ function CurrencyInput({ initialValue = "", onChange }: { initialValue: string; 
     let key = "";
     let sStart = 5;
     let sEnd = 5;
+
+    const updateMoves = (val: string) => {
+      if (moveIdx === moves.length - 1) {
+        if (moves[moveIdx] !== val) {
+          moves.push(val);
+        }
+      } else {
+        moves.splice(moveIdx, moves.length - moveIdx + 1, val);
+      }
+
+      if (moves.length < 2) {
+        moves.unshift(initialValue);
+      }
+      moveIdx = moves.length - 1;
+      // console.log(moveIdx, moves);
+    };
 
     const onKeyUp = (e: KeyboardEvent) => {
       // console.log(":::keyup", e.target.selectionStart, e.target.selectionEnd, { el: e.target });
@@ -110,7 +72,7 @@ function CurrencyInput({ initialValue = "", onChange }: { initialValue: string; 
         e,
       });
 
-      let strVal = val.stripDollarSign().stripDecimalSign();
+      let strVal = `${val}`.removeNonDigits();
 
       switch (true) {
         case key === "Tab":
@@ -180,7 +142,7 @@ function CurrencyInput({ initialValue = "", onChange }: { initialValue: string; 
             } else {
               // console.log("1 char, not last");
               const idx = [",", "."].includes(val[sStart - 1]) ? sStart - 2 : sStart - 1;
-              let temp = val.splice(idx, 1).stripDollarSign().stripDecimalSign();
+              const temp = val.splice(idx, 1).stripDollarSign().stripDecimalSign();
               // console.log(temp, idx, val[idx]);
               strVal = temp.padZeroes().addDollarBack().addDecimalBack();
             }
@@ -236,29 +198,13 @@ function CurrencyInput({ initialValue = "", onChange }: { initialValue: string; 
     input.addEventListener("keydown", onKeyDown);
     input.addEventListener("keyup", onKeyUp);
 
-    function updateMoves(val: string) {
-      if (moveIdx === moves.length - 1) {
-        if (moves[moveIdx] !== val) {
-          moves.push(val);
-        }
-      } else {
-        moves.splice(moveIdx, moves.length - moveIdx + 1, val);
-      }
-
-      if (moves.length < 2) {
-        moves.unshift(initialValue);
-      }
-      moveIdx = moves.length - 1;
-      // console.log(moveIdx, moves);
-    }
-
     return () => {
       if (!input) return;
 
       input.removeEventListener("keydown", onKeyDown);
       input.removeEventListener("keyup", onKeyUp);
     };
-  }, [onChange]);
+  }, [initialValue, onChange]);
 
   return (
     <>
